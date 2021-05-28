@@ -1,0 +1,129 @@
+//一个电机加上编码器测试程序
+//最终输出结果为J1,J2关节的反馈转动角度
+
+#include "AccelStepper.h"
+
+
+
+#define J2_stepPin   22
+#define J2_dirPin    23
+
+
+
+#define J2_Achannel  2
+#define J2_Bchannel  3
+
+/*定义不同关节编码器变量*/
+//计数
+
+double J2_temp=0.0;
+double J2_counter=0.0;
+
+//A通道初始状态记录
+
+int J2_A_last_state;
+
+//A通道现在状态记录
+
+int J2_A_current_state;
+
+//B通道目前状态记录
+
+int J2_B_current_state;
+
+//这里可以调节想要转动的角度
+
+double J2_set_angle=7.2;  //J2电机每400步电机转一圈（驱动器细分400），输出轴转7.2度（50：1减速比），J2关节转7.2度（无减速）
+
+//其他运算变量
+
+double J2_set_step;
+
+double J2_encoder_max;
+
+double J2_motor_max;
+
+double J2_degree;
+
+AccelStepper stepper2(1,J2_stepPin,J2_dirPin);
+
+
+void setup() {
+  Serial.begin(115200);
+  
+
+//参数计算
+
+  
+  J2_set_step    = 400/7.2*J2_set_angle;
+  J2_encoder_max = 1023/7.2*J2_set_angle;
+  J2_motor_max   = J2_set_angle;
+  
+
+//电机
+  pinMode(J2_stepPin,OUTPUT);
+  pinMode(J2_dirPin,OUTPUT);
+  
+
+
+  pinMode(J2_Achannel,INPUT_PULLUP);
+  pinMode(J2_Bchannel,INPUT_PULLUP);
+
+  stepper2.setMaxSpeed(500);
+  stepper2.setAcceleration(100);
+
+
+  J2_A_last_state=digitalRead(J2_Achannel);
+  
+}
+
+void loop() {
+  
+
+  J2_A_current_state=digitalRead(J2_Achannel);
+  J2_B_current_state=digitalRead(J2_Bchannel);
+  
+
+  
+//J2电机
+  if ( stepper2.currentPosition() == 0 ){ 
+    stepper2.moveTo(J2_set_step);              
+  } 
+   else if ( stepper2.currentPosition() == J2_set_step)
+   {
+    stepper2.moveTo(0);             
+  }   
+
+
+
+
+
+//J2编码器
+  if(J2_A_current_state!=J2_A_last_state){
+
+    if(J2_B_current_state!=J2_A_current_state){
+      J2_counter=J2_counter-1;
+      }
+       else{
+            J2_counter=J2_counter+1;
+           }
+     //Serial.print("J2 degree:");
+     //double J2_degree=J2_counter*J2_motor_max/J2_encoder_max;
+     J2_degree=J2_counter*J2_motor_max/J2_encoder_max;
+     //
+     
+      Serial.print(J2_counter);
+      Serial.print("  ");
+      Serial.println(J2_degree,6);
+      J2_temp=J2_counter;
+    }
+ 
+
+     
+
+     J2_A_last_state=J2_A_current_state;
+     
+
+    stepper2.run();
+
+}
